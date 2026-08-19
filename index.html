@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Испытание</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12101a;
+    --surface:#1c1830;
+    --border:#332c52;
+    --gold:#d9a94f;
+    --lilac:#b9a6e0;
+    --text:#f5f0e6;
+    --muted:#9089a6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 50% 0%, #241f3a 0%, var(--bg) 60%);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:32px 16px;
+  }
+  .card{
+    width:100%;
+    max-width:420px;
+    text-align:center;
+  }
+  .eyebrow{
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--lilac);
+    margin-bottom:8px;
+  }
+  h1{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:600;
+    font-size:34px;
+    margin:0 0 6px;
+    color:var(--text);
+  }
+  p.sub{
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.6;
+    margin:0 0 32px;
+  }
+  #board{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    width:260px;
+    margin:0 auto 24px;
+  }
+  .cell{
+    aspect-ratio:1/1;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    font-family:'Cormorant Garamond',serif;
+    font-size:44px;
+    font-weight:600;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:border-color .2s, transform .15s;
+  }
+  .cell:hover:not(.filled){
+    border-color:var(--gold);
+  }
+  .cell.filled{cursor:default;}
+  .cell.x{color:var(--gold);}
+  .cell.o{color:var(--lilac);}
+  #status{
+    min-height:22px;
+    font-size:14px;
+    color:var(--muted);
+    margin-bottom:18px;
+  }
+  button.action{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:border-color .2s, background .2s;
+  }
+  button.action:hover{
+    border-color:var(--gold);
+    background:rgba(217,169,79,.08);
+  }
+  #unlock{
+    display:none;
+    margin-top:36px;
+    padding-top:28px;
+    border-top:1px solid var(--border);
+    animation:reveal .6s ease;
+  }
+  @keyframes reveal{
+    from{opacity:0; transform:translateY(8px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  #unlock .eyebrow{color:var(--gold);}
+  .unlock-row{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin-top:18px;
+  }
+  a.pill, span.pill{
+    display:inline-block;
+    text-decoration:none;
+    font-size:14px;
+    padding:12px 20px;
+    border-radius:8px;
+    font-family:'Inter',sans-serif;
+  }
+  a.pill.gold{
+    background:var(--gold);
+    color:#241a05;
+    font-weight:500;
+  }
+  a.pill.gold:hover{filter:brightness(1.08);}
+  span.pill.soon{
+    background:transparent;
+    border:1px dashed var(--border);
+    color:var(--muted);
+  }
+  a.pill.video{
+    background:transparent;
+    border:1px solid var(--lilac);
+    color:var(--lilac);
+  }
+  a.pill.video:hover{background:rgba(185,166,224,.1);}
+  @media (prefers-reduced-motion: reduce){
+    #unlock{animation:none;}
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="eyebrow">Испытание</div>
+  <h1>Сыграй со мной</h1>
+  <p class="sub">Обыграй меня в крестики-нолики — и получишь то, что откроет часть тайны.</p>
+
+  <div id="board"></div>
+  <div id="status">Ты играешь за ×. Твой ход.</div>
+  <button class="action" id="resetBtn">Начать заново</button>
+
+  <div id="unlock">
+    <div class="eyebrow">Победа</div>
+    <h1 style="font-size:24px;">Кое-что для тебя</h1>
+    <div class="unlock-row">
+      <a class="pill gold" id="downloadLink" href="piece.jpg" download>Скачать</a>
+      <a class="pill video" id="videoLink" href="https://drive.google.com/file/d/1AtoN-sL_ascZFuTQDgZzyhF3S_G7lfiz/view?usp=sharing" target="_blank" rel="noopener">Смотреть видео</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var boardEl = document.getElementById('board');
+  var statusEl = document.getElementById('status');
+  var unlockEl = document.getElementById('unlock');
+  var resetBtn = document.getElementById('resetBtn');
+  var cells, board, gameOver;
+
+  var WIN_LINES = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  function init(){
+    board = Array(9).fill(null);
+    gameOver = false;
+    unlockEl.style.display = 'none';
+    statusEl.textContent = 'Ты играешь за ×. Твой ход.';
+    boardEl.innerHTML = '';
+    cells = [];
+    for (var i=0;i<9;i++){
+      var c = document.createElement('div');
+      c.className = 'cell';
+      c.addEventListener('click', (function(idx){
+        return function(){ playerMove(idx); };
+      })(i));
+      boardEl.appendChild(c);
+      cells.push(c);
+    }
+  }
+
+  function render(){
+    for (var i=0;i<9;i++){
+      var v = board[i];
+      cells[i].textContent = v || '';
+      cells[i].className = 'cell' + (v ? ' filled ' + v.toLowerCase() : '');
+    }
+  }
+
+  function checkWinner(b){
+    for (var i=0;i<WIN_LINES.length;i++){
+      var line = WIN_LINES[i];
+      var a=b[line[0]], bb=b[line[1]], c=b[line[2]];
+      if (a && a===bb && bb===c) return a;
+    }
+    if (b.every(function(x){return x;})) return 'draw';
+    return null;
+  }
+
+  function playerMove(idx){
+    if (gameOver || board[idx]) return;
+    board[idx] = 'X';
+    render();
+    var result = checkWinner(board);
+    if (result){ endGame(result); return; }
+    statusEl.textContent = 'Мой ход...';
+    setTimeout(computerMove, 500);
+  }
+
+  function computerMove(){
+    if (gameOver) return;
+    var empty = board.reduce(function(acc,v,i){ if(!v) acc.push(i); return acc; }, []);
+    if (empty.length === 0) return;
+    var choice = empty[Math.floor(Math.random()*empty.length)];
+    board[choice] = 'O';
+    render();
+    var result = checkWinner(board);
+    if (result){ endGame(result); return; }
+    statusEl.textContent = 'Ты играешь за ×. Твой ход.';
+  }
+
+  function endGame(result){
+    gameOver = true;
+    if (result === 'X'){
+      statusEl.textContent = 'Ты выиграла.';
+      unlockEl.style.display = 'block';
+    } else if (result === 'O'){
+      statusEl.textContent = 'В этот раз не вышло. Попробуй ещё раз.';
+    } else {
+      statusEl.textContent = 'Ничья. Ещё разок?';
+    }
+  }
+
+  resetBtn.addEventListener('click', init);
+  init();
+})();
+</script>
+</body>
+</html>
